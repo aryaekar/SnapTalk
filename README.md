@@ -32,6 +32,7 @@ JWT_EXPIRE=7d
 CLOUDINARY_CLOUD_NAME=xxxx
 CLOUDINARY_API_KEY=xxxx
 CLOUDINARY_API_SECRET=xxxx
+FRONTEND_URL=http://localhost:3000
 ```
 
 Frontend: `frontend/.env`
