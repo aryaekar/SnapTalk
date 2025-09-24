@@ -40,8 +40,9 @@ function CreatePost({ onPostCreated }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    if (!content.trim() && selectedFiles.length === 0) {
-      toast.error('Please add some content or media to your post');
+    // Require text content regardless of selected media
+    if (!content.trim()) {
+      toast.error('Please add text to your post');
       return;
     }
 
@@ -75,6 +76,11 @@ function CreatePost({ onPostCreated }) {
                 className="w-full p-3 border-0 bg-gray-50 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all duration-200"
                 rows={isExpanded ? 4 : 1}
               />
+
+              {/* Inline validation message when content is required */}
+              {isExpanded && !content.trim() && (
+                <p className="mt-1 text-sm text-red-600">Text content is required to post.</p>
+              )}
 
               {/* File Previews */}
               {selectedFiles.length > 0 && (
@@ -161,7 +167,8 @@ function CreatePost({ onPostCreated }) {
                       </button>
                       <button
                         type="submit"
-                        disabled={createPostMutation.isLoading || (!content.trim() && selectedFiles.length === 0)}
+                        disabled={createPostMutation.isLoading || !content.trim()}
+                        title={!content.trim() ? 'Add text to your post' : ''}
                         className="btn btn-primary disabled:opacity-50"
                       >
                         {createPostMutation.isLoading ? (

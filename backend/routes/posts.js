@@ -21,8 +21,18 @@ router.post('/',
     });
   },
   [
-  body('content').trim().notEmpty().withMessage('Post content is required')
-    .isLength({ max: 2000 }).withMessage('Post content cannot exceed 2000 characters')
+  // Allow either text content or at least one uploaded media file
+  body('content').custom((value, { req }) => {
+    const hasText = typeof value === 'string' && value.trim().length > 0;
+    const hasFiles = Array.isArray(req.files) && req.files.length > 0;
+    if (!hasText && !hasFiles) {
+      throw new Error('Add text or at least one media file');
+    }
+    if (hasText && value.trim().length > 2000) {
+      throw new Error('Post content cannot exceed 2000 characters');
+    }
+    return true;
+  })
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -36,7 +46,9 @@ router.post('/',
 
     try {
       const { content, taggedUsers, privacy = 'friends' } = req.body;
-      const media = [];
+      // Persist uploaded files into schema-aligned fields
+      const images = [];
+      const videos = [];
 
       // Handle media uploads
       if (req.files && req.files.length > 0) {
@@ -47,20 +59,23 @@ router.post('/',
               folder: `snaptalk/posts/${req.user.id}`
             });
 
-            media.push({
-              url: result.secure_url,
-              mediaType: file.mimetype.startsWith('video/') ? 'video' : 'image',
-              publicId: result.public_id,
-              width: result.width,
-              height: result.height
-            });
+            if (file.mimetype.startsWith('video/')) {
+              videos.push({
+                url: result.secure_url,
+                publicId: result.public_id
+              });
+            } else {
+              images.push({
+                url: result.secure_url,
+                publicId: result.public_id
+              });
+            }
           } catch (uploadError) {
             console.error('Media upload error:', uploadError);
             // If one file fails, delete any successfully uploaded files
-            if (media.length > 0) {
-              await Promise.all(media.map(item => 
-                deleteFromCloudinary(item.publicId)
-              ));
+            if (images.length > 0 || videos.length > 0) {
+              const uploaded = [...images, ...videos];
+              await Promise.all(uploaded.map(item => deleteFromCloudinary(item.publicId)));
             }
             return res.status(400).json({
               success: false,
@@ -73,7 +88,8 @@ router.post('/',
       const post = new Post({
         author: req.user.id,
         content,
-        media,
+        images,
+        videos,
         privacy
       });
 
